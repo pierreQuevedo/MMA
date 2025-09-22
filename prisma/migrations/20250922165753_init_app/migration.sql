@@ -8,14 +8,15 @@ CREATE TYPE "public"."LicenseStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'EXPIRED');
 CREATE TYPE "public"."CompanyRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER');
 
 -- CreateTable
-CREATE TABLE "public"."User" (
+CREATE TABLE "public"."AppUser" (
     "id" TEXT NOT NULL,
+    "authUserId" TEXT,
     "email" TEXT NOT NULL,
     "platformRole" "public"."PlatformRole",
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "AppUser_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -46,22 +47,12 @@ CREATE TABLE "public"."License" (
 -- CreateTable
 CREATE TABLE "public"."CompanyUser" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "appUserId" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "role" "public"."CompanyRole" NOT NULL DEFAULT 'MEMBER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CompanyUser_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "public"."Session" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -79,7 +70,10 @@ CREATE TABLE "public"."Invite" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
+CREATE UNIQUE INDEX "AppUser_authUserId_key" ON "public"."AppUser"("authUserId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppUser_email_key" ON "public"."AppUser"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Company_name_key" ON "public"."Company"("name");
@@ -94,13 +88,10 @@ CREATE UNIQUE INDEX "License_companyId_key" ON "public"."License"("companyId");
 CREATE INDEX "CompanyUser_companyId_idx" ON "public"."CompanyUser"("companyId");
 
 -- CreateIndex
-CREATE INDEX "CompanyUser_userId_idx" ON "public"."CompanyUser"("userId");
+CREATE INDEX "CompanyUser_appUserId_idx" ON "public"."CompanyUser"("appUserId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CompanyUser_companyId_userId_key" ON "public"."CompanyUser"("companyId", "userId");
-
--- CreateIndex
-CREATE INDEX "Session_userId_idx" ON "public"."Session"("userId");
+CREATE UNIQUE INDEX "CompanyUser_companyId_appUserId_key" ON "public"."CompanyUser"("companyId", "appUserId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Invite_token_key" ON "public"."Invite"("token");
@@ -115,10 +106,7 @@ ALTER TABLE "public"."License" ADD CONSTRAINT "License_companyId_fkey" FOREIGN K
 ALTER TABLE "public"."CompanyUser" ADD CONSTRAINT "CompanyUser_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "public"."Company"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."CompanyUser" ADD CONSTRAINT "CompanyUser_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CompanyUser" ADD CONSTRAINT "CompanyUser_appUserId_fkey" FOREIGN KEY ("appUserId") REFERENCES "public"."AppUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Invite" ADD CONSTRAINT "Invite_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "public"."Company"("id") ON DELETE CASCADE ON UPDATE CASCADE;
