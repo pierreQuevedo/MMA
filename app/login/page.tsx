@@ -1,40 +1,37 @@
-"use client";
-import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
+import { GalleryVerticalEnd } from "lucide-react"
+
+import { LoginForm } from "@/components/auth/login-form"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const { data,error } = await authClient.signIn.email({ email, password });
-    console.log("signIn", { data, error });
-    if (error) {
-      // todo: toast erreur
-      return;
-    }
-    // Important: on passe par /post-login qui décide où aller
-    window.location.href = "/post-login";
-  }
-
   return (
-    <main className="mx-auto max-w-sm p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Connexion</h1>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <input className="w-full rounded border p-2" type="email" value={email}
-               onChange={(e)=>setEmail(e.target.value)} placeholder="email@exemple.com" required/>
-        <input className="w-full rounded border p-2" type="password" value={password}
-               onChange={(e)=>setPassword(e.target.value)} placeholder="Mot de passe" required/>
-        <button className="w-full rounded bg-black px-4 py-2 text-white">Se connecter</button>
-      </form>
-    </main>
-  );
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex justify-center gap-2 md:justify-start">
+          <a href="#" className="flex items-center gap-2 font-medium">
+            <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+              <GalleryVerticalEnd className="size-4" />
+            </div>
+            Acme Inc.
+          </a>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-xs">
+            <LoginForm />
+            <p>
+          superadmin@exemple.com → password123 <br/>
+          owner@acme.com → password123 <br/>
+          member@acme.com → password123 <br/>
+        </p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-muted relative hidden lg:block">
+        <img
+          src="/placeholder.svg"
+          alt="Image"
+          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
+    </div>
+  )
 }
-
-
-// 	•	Tous les utilisateurs auront password123 comme mot de passe.
-	// •	Tu peux te connecter via ta page /login avec :
-	// •	superadmin@exemple.com → /admin/dashboard
-	// •	owner@acme.com → /acme/dashboard
-	// •	member@acme.com → /acme/dashboard

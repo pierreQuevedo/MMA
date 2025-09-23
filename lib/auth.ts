@@ -57,3 +57,7 @@ export const auth = betterAuth({
 
   plugins: [nextCookies()], // garder en dernier
 });
+
+// •	superadmin@exemple.com / password123 → /admin/dashboard
+// •	owner@acme.com / password123 → /acme/dashboard (Owner)
+// •	member@acme.com / password123 → /acme/dashboard (Member)
