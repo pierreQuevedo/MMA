@@ -13,6 +13,8 @@ CREATE TABLE "public"."AppUser" (
     "authUserId" TEXT,
     "email" TEXT NOT NULL,
     "platformRole" "public"."PlatformRole",
+    "firstName" TEXT,
+    "lastName" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -24,6 +26,13 @@ CREATE TABLE "public"."Company" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "addressLine1" TEXT,
+    "addressLine2" TEXT,
+    "postalCode" TEXT,
+    "city" TEXT,
+    "country" TEXT DEFAULT 'FR',
+    "phone" TEXT,
+    "siret" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -80,6 +89,9 @@ CREATE UNIQUE INDEX "Company_name_key" ON "public"."Company"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Company_slug_key" ON "public"."Company"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Company_siret_key" ON "public"."Company"("siret");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "License_companyId_key" ON "public"."License"("companyId");

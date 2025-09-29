@@ -4,21 +4,28 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-/** -------------------------------------------
- *  Identité = Better Auth (tables gérées par BA)
- *  Domaine  = Prisma (AppUser + Company + License...)
- *  ------------------------------------------- */
+/**
+ * -------------------------------------------
+ * Identité = Better Auth (tables gérées par BA)
+ * Domaine  = Prisma (AppUser + Company + License...)
+ * -------------------------------------------
+ */
 
 model AppUser {
-  id           String        @id @default(cuid())   // ID "domaine" interne
-  authUserId   String?       @unique               // ID Better Auth (nullable au début)
-  email        String        @unique               // cache utile pour mapping initial
+  id           String        @id @default(cuid())
+  authUserId   String?       @unique
+  email        String        @unique
   platformRole PlatformRole?
   memberships  CompanyUser[]
+
+  // NEW
+  firstName    String?
+  lastName     String?
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -35,6 +42,16 @@ model Company {
   users     CompanyUser[]
   invites   Invite[]
   license   License?
+
+  // NEW
+  addressLine1 String?
+  addressLine2 String?
+  postalCode   String?
+  city         String?
+  country      String? @default("FR")
+  phone        String?
+  siret        String? @unique   // nullable + unique (OK sur Postgres)
+
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -59,15 +76,15 @@ enum LicenseStatus {
 }
 
 model CompanyUser {
-  id         String      @id @default(cuid())
-  appUserId  String
-  companyId  String
-  role       CompanyRole @default(MEMBER)
+  id        String      @id @default(cuid())
+  appUserId String
+  companyId String
+  role      CompanyRole @default(MEMBER)
 
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user       AppUser  @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    AppUser @relation(fields: [appUserId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([companyId, appUserId])
   @@index([companyId])
