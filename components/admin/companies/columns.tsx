@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteCompany } from "@/app/admin/companies/actionsDelete";
 import { DeleteCompanyDialog } from "./delete-company-dialog";
+import { EditCompanySheet } from "@/components/admin/companies/edit-company-sheet";
 
 function RowActions({ company }: { company: CompanyRow }) {
   const router = useRouter();
@@ -126,13 +127,7 @@ export const companyColumns: ColumnDef<CompanyRow>[] = [
     header: () => null,
     cell: ({ row }) => (
       <div className="flex gap-2 justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => alert(`Edit ${row.original.name}`)}
-        >
-          Modifier
-        </Button>
+        <EditCompanySheet companyId={row.original.id} />
         <DeleteCompanyDialog company={row.original} />
       </div>
     ),

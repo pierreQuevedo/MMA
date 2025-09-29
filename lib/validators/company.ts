@@ -40,7 +40,7 @@ export const CompanyFormUISchema = z.object({
 });
 
 /** Types */
-export type CompanyFormInput = z.input<typeof CompanyFormUISchema>;   // types attendus dans le form (strings)
+export type CompanyFormInput = z.input<typeof CompanyFormUISchema>; // types attendus dans le form (strings)
 export type CompanyFormValues = z.output<typeof CompanyFormUISchema>; // types résolus après transform (number / Date|undefined)
 
 /** DTO attendu par la server action */
@@ -62,7 +62,9 @@ export type CreateCompanyDTO = {
 };
 
 /** Normalisation explicite pour la server action */
-export function normalizeCompanyFormValues(v: CompanyFormValues): CreateCompanyDTO {
+export function normalizeCompanyFormValues(
+  v: CompanyFormValues
+): CreateCompanyDTO {
   return {
     name: v.name,
     slug: v.slug,
@@ -76,10 +78,51 @@ export function normalizeCompanyFormValues(v: CompanyFormValues): CreateCompanyD
     ownerEmail: v.ownerEmail,
     ownerFirstName: v.ownerFirstName,
     ownerLastName: v.ownerLastName,
-    seats: v.seats,                       // number
-    expiresAt: v.expiresAt ?? null,       // Date | null
+    seats: v.seats, // number
+    expiresAt: v.expiresAt ?? null, // Date | null
   };
 }
 
 /** alias facultatif si du code existant importe `companyFormSchema` */
 export const companyFormSchema = CompanyFormUISchema;
+
+// ======= EDIT (UI) =======
+
+export const CompanyEditUISchema = z.object({
+    name: z.string().min(2).optional(),
+    slug: z.string().min(2).optional(),
+    addressLine1: z.string().optional(),
+    addressLine2: z.string().optional(),
+    postalCode: z.string().optional(),
+    city: z.string().optional(),
+    country: z.string().optional(),
+    phone: z.string().optional(),
+    siret: z.string().optional(),
+    seats: z
+      .string()
+      .regex(/^\d+$/)
+      .transform((s) => Number(s))
+      .optional(),
+    expiresAt: z
+      .string()
+      .optional()
+      .transform((s) => (s ? new Date(s) : undefined)),
+  });
+  export type CompanyEditFormInput = z.input<typeof CompanyEditUISchema>;
+  export type CompanyEditFormValues = z.output<typeof CompanyEditUISchema>;
+  
+  export function normalizeCompanyEditValues(v: CompanyEditFormValues) {
+    return {
+      name: v.name,
+      slug: v.slug,
+      addressLine1: v.addressLine1,
+      addressLine2: v.addressLine2 ?? undefined,
+      postalCode: v.postalCode,
+      city: v.city,
+      country: v.country,
+      phone: v.phone ?? undefined,
+      siret: v.siret ?? undefined,
+      seats: v.seats,               // number | undefined
+      expiresAt: v.expiresAt ?? undefined, // Date | undefined
+    };
+  }

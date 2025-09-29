@@ -4,6 +4,7 @@
 import * as React from "react";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 import {
@@ -11,16 +12,27 @@ import {
   type CompanyFormInput,
   normalizeCompanyFormValues,
 } from "@/lib/validators/company";
-import { createCompany } from "@/app/admin/companies/actions";
+import { createCompany } from "@/app/admin/companies/actionsAdd";
 
-import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl } from "@/components/ui/form";
+import { toast } from "sonner";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormControl,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-type Props = { onSuccess?: (r: { companyId: string; companySlug: string }) => void };
+type Props = {
+  onSuccess?: (r: { companyId: string; companySlug: string }) => void;
+};
 
 export function CreateCompanyForm({ onSuccess }: Props) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<CompanyFormInput>({
@@ -40,48 +52,46 @@ export function CreateCompanyForm({ onSuccess }: Props) {
       ownerFirstName: "",
       ownerLastName: "",
       // License
-      seats: "1",       // string (on garde RHF en string côté UI)
-      expiresAt: "",    // string "yyyy-mm-dd"
+      seats: "1", // string (on garde RHF en string côté UI)
+      expiresAt: "", // string "yyyy-mm-dd"
     },
     mode: "onSubmit",
   });
 
   const onSubmit = (values: CompanyFormInput) => {
-    startTransition(async () => {
-      // 1) Validation côté client (Zod) + transform
-      const parsed = CompanyFormUISchema.safeParse(values);
+    startTransition(() => {
+      (async () => {
+        // on parsse via Zod pour appliquer les transforms (string -> number/date)
+        const normalized = normalizeCompanyFormValues(
+          CompanyFormUISchema.parse(values)
+        );
 
-      if (!parsed.success) {
-        // ✅ typage fort sur fieldErrors (évite le '{}' qui te donnait les erreurs "length" & index 0)
-        const { fieldErrors } = parsed.error.flatten();
-        (Object.entries(fieldErrors) as [keyof CompanyFormInput, string[] | undefined][])
-          .forEach(([name, messages]) => {
-            if (messages?.[0]) {
-              form.setError(name, { type: "zod", message: messages[0] });
-            }
-          });
-        return;
-      }
+        // toast "en cours" — on garde l'id pour le mettre à jour
+        const tId = toast.loading(`Création de l'entreprise…`);
 
-      // 2) Normalisation en DTO serveur (number/Date|null)
-      const dto = normalizeCompanyFormValues(parsed.data);
+        try {
+          const res = await createCompany(normalized);
 
-      // 3) Appel server action
-      const res = await createCompany(dto);
+          if (res?.ok) {
+            const companyName = (res as any).companyName ?? normalized.name; // fallback si l'action ne renvoie pas le nom
+            toast.success(`L'entreprise "${companyName}" a été ajoutée`, {
+              id: tId,
+            });
 
-      if (res.ok) {
-        onSuccess?.({ companyId: res.companyId, companySlug: res.companySlug });
-        form.reset();
-      } else {
-        // mapping d’erreur simple
-        form.setError("slug", {
-          type: "server",
-          message:
-            res.error === "UNIQUE_CONSTRAINT_FAILED"
-              ? "Slug (ou un autre champ unique) existe déjà."
-              : "Une erreur est survenue.",
-        });
-      }
+            router.refresh(); // forcer la mise à jour de la liste
+            onSuccess?.({
+              companyId: res.companyId,
+              companySlug: (res as any).companySlug,
+            });
+            form.reset();
+          } else {
+            toast.error(res?.error ?? "Échec de la création", { id: tId });
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error("Erreur inattendue lors de la création", { id: tId });
+        }
+      })();
     });
   };
 
@@ -97,7 +107,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Name</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -108,7 +120,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Slug</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -120,7 +134,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem className="md:col-span-2">
                 <FormLabel>Address line 1</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -131,7 +147,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem className="md:col-span-2">
                 <FormLabel>Address line 2</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -143,7 +161,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Postal code</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -154,7 +174,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>City</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -166,7 +188,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Country</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -177,7 +201,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Phone</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -188,7 +214,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>SIRET</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -205,7 +233,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email</FormLabel>
-                <FormControl><Input type="email" {...field} /></FormControl>
+                <FormControl>
+                  <Input type="email" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -216,7 +246,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>First name</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -227,7 +259,9 @@ export function CreateCompanyForm({ onSuccess }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Last name</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

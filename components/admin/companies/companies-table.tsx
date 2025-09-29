@@ -103,15 +103,17 @@ export function CompaniesTable({ data }: Props) {
 
   return (
     <div className="space-y-3">
-      <form onSubmit={applySearch} className="flex gap-2">
-        <Input
-          placeholder="Search name or slug…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="max-w-xs"
-        />
-        <Button type="submit" variant="outline">Search</Button>
-      </form>
+      <div className="flex justify-between">
+        <form onSubmit={applySearch} className="flex gap-2">
+          <Input
+            placeholder="Search name or slug…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button type="submit" variant="outline">Chercher</Button>
+        </form>
+      </div>
 
       <div className="rounded-lg border">
         <Table>

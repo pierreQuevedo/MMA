@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { CreateCompanyDTO } from "@/lib/validators/company";
+import { revalidatePath } from "next/cache";
 
 export type CreateCompanyResult =
   | { ok: true; companyId: string; companySlug: string }
@@ -62,7 +63,7 @@ export async function createCompany(input: CreateCompanyDTO): Promise<CreateComp
         },
       });
 
-      return { companyId: company.id, companySlug: company.slug };
+      return { companyId: company.id, companySlug: company.slug, companyName: company.name };
     });
 
     return { ok: true, ...res };

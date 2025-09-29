@@ -17,6 +17,7 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconBuildings,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/admin/nav/nav-documents"
@@ -41,14 +42,19 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
+      title: "Tableau de bord",
       url: "/admin/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
+      title: "Entreprises",
       url: "/admin/companies",
-      icon: IconListDetails,
+      icon: IconBuildings,
+    },
+    {
+      title: "Utilisateur Entreprise",
+      url: "#",
+      icon: IconUsers,
     },
     {
       title: "Analytics",
@@ -59,11 +65,6 @@ const data = {
       title: "Projects",
       url: "#",
       icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
     },
   ],
   navClouds: [
