@@ -53,7 +53,7 @@ const data = {
     },
     {
       title: "Utilisateur Entreprise",
-      url: "#",
+      url: "/admin/company-users",
       icon: IconUsers,
     },
     {

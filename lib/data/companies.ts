@@ -10,6 +10,13 @@ export type CompaniesQuery = {
   /** tri (alias inclus) */
   sort?: "name" | "slug" | "createdAt" | "updatedAt" | "status" | "seatsUsed";
   order?: "asc" | "desc";
+
+  // --- Nouveaux filtres ---
+  status?: "ACTIVE" | "SUSPENDED" | "EXPIRED" | "NONE" | ""; // NONE = sans licence
+  withLicense?: boolean;
+  country?: string;
+  seatsMin?: number;
+  seatsMax?: number;
 };
 
 /** Ligne sérialisée (RSC-friendly) */
@@ -49,18 +56,52 @@ export async function getCompaniesPage({
   q = "",
   sort = "createdAt",
   order = "desc",
+
+  // filtres
+  status = "",
+  withLicense = false,
+  country = "",
+  seatsMin,
+  seatsMax,
 }: CompaniesQuery) {
   const skip = (page - 1) * perPage;
 
-  // where strictement typé (case-insensitive)
-  const where: Prisma.CompanyWhereInput | undefined = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { slug: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : undefined;
+  // Construire dynamiquement les conditions
+  const AND: Prisma.CompanyWhereInput[] = [];
+
+  if (q) {
+    AND.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { slug: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (country) {
+    AND.push({ country: { equals: country } });
+  }
+
+  if (withLicense) {
+    AND.push({ license: { isNot: null } });
+  }
+
+  if (status) {
+    if (status === "NONE") {
+      AND.push({ license: { is: null } });
+    } else {
+      AND.push({ license: { is: { status } } });
+    }
+  }
+
+  if (typeof seatsMin === "number") {
+    AND.push({ license: { is: { seats: { gte: seatsMin } } } });
+  }
+  if (typeof seatsMax === "number") {
+    AND.push({ license: { is: { seats: { lte: seatsMax } } } });
+  }
+
+  const where: Prisma.CompanyWhereInput | undefined = AND.length ? { AND } : undefined;
 
   // orderBy sûr (y compris champs liés)
   let orderBy: Prisma.CompanyOrderByWithRelationInput;

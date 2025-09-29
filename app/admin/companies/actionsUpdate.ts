@@ -3,6 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import type { $Enums } from "@/lib/generated/prisma";
 
 type GetCompanyForEditResult =
   | {
@@ -18,17 +19,45 @@ type GetCompanyForEditResult =
         country: string | null;
         phone: string | null;
         siret: string | null;
-        license: { seats: number; expiresAt: string | null } | null; // dates en ISO string
+        // ✅ on inclut le status dans le type retourné
+        license:
+          | {
+              seats: number;
+              expiresAt: string | null; // ISO
+              status: $Enums.LicenseStatus; // "ACTIVE" | "SUSPENDED" | "EXPIRED"
+            }
+          | null;
       };
     }
   | { ok: false; error: string };
 
-export async function getCompanyForEdit(companyId: string): Promise<GetCompanyForEditResult> {
+export async function getCompanyForEdit(
+  companyId: string
+): Promise<GetCompanyForEditResult> {
   try {
     const c = await prisma.company.findUnique({
       where: { id: companyId },
-      include: { license: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        addressLine1: true,
+        addressLine2: true,
+        postalCode: true,
+        city: true,
+        country: true,
+        phone: true,
+        siret: true,
+        license: {
+          select: {
+            seats: true,
+            expiresAt: true,
+            status: true, // ✅ on récupère le statut
+          },
+        },
+      },
     });
+
     if (!c) return { ok: false, error: "Company not found" };
 
     return {
@@ -47,7 +76,10 @@ export async function getCompanyForEdit(companyId: string): Promise<GetCompanyFo
         license: c.license
           ? {
               seats: c.license.seats,
-              expiresAt: c.license.expiresAt?.toISOString() ?? null,
+              expiresAt: c.license.expiresAt
+                ? c.license.expiresAt.toISOString()
+                : null,
+              status: c.license.status, // ✅ présent côté client
             }
           : null,
       },
@@ -59,85 +91,127 @@ export async function getCompanyForEdit(companyId: string): Promise<GetCompanyFo
 }
 
 type UpdateCompanyInput = {
-  companyId: string;
-  data: {
-    name?: string;
-    slug?: string;
-    addressLine1?: string;
-    addressLine2?: string;
-    postalCode?: string;
-    city?: string;
-    country?: string;
-    phone?: string;
-    siret?: string;
-    seats?: number;        // if present => update/create license
-    expiresAt?: Date;      // if present => update/create license
+    companyId: string;
+    data: {
+      name?: string;
+      slug?: string;
+      addressLine1?: string | null;
+      addressLine2?: string | null;
+      postalCode?: string | null;
+      city?: string | null;
+      country?: string | null;
+      phone?: string | null;
+      siret?: string | null;
+  
+      // ⚠️ peuvent arriver en null depuis l'UI → on les ignorera
+      seats?: number | null;
+      expiresAt?: Date | null;
+    };
   };
-};
 
-export async function updateCompany({ companyId, data }: UpdateCompanyInput) {
-  try {
-    // 1) Build "dataCompany" en ignorant les undefined
-    const dataCompany: Record<string, any> = {};
-    for (const k of [
-      "name",
-      "slug",
-      "addressLine1",
-      "addressLine2",
-      "postalCode",
-      "city",
-      "country",
-      "phone",
-      "siret",
-    ] as const) {
-      if (typeof data[k] !== "undefined") dataCompany[k] = data[k];
-    }
-
-    if (Object.keys(dataCompany).length > 0) {
-      await prisma.company.update({
-        where: { id: companyId },
-        data: dataCompany,
-      });
-    }
-
-    // 2) License : si seats et/ou expiresAt fournis -> update/create
-    if (typeof data.seats !== "undefined" || typeof data.expiresAt !== "undefined") {
-      const existing = await prisma.license.findUnique({ where: { companyId } });
-      if (existing) {
-        await prisma.license.update({
-          where: { companyId },
-          data: {
-            seats: typeof data.seats !== "undefined" ? data.seats : existing.seats,
-            expiresAt:
-              typeof data.expiresAt !== "undefined" ? data.expiresAt : existing.expiresAt,
-          },
+  export async function updateCompany({ companyId, data }: UpdateCompanyInput) {
+    try {
+      // 1) Update Company (ignore undefined)
+      const dataCompany: Record<string, unknown> = {};
+      for (const k of [
+        "name",
+        "slug",
+        "addressLine1",
+        "addressLine2",
+        "postalCode",
+        "city",
+        "country",
+        "phone",
+        "siret",
+      ] as const) {
+        if (typeof data[k] !== "undefined") dataCompany[k] = data[k];
+      }
+  
+      if (Object.keys(dataCompany).length > 0) {
+        await prisma.company.update({
+          where: { id: companyId },
+          data: dataCompany,
         });
-      } else {
-        // création : on exige seats + expiresAt pour éviter un état invalide
-        if (typeof data.seats === "number" && data.expiresAt instanceof Date) {
-          await prisma.license.create({
-            data: {
-              companyId,
-              seats: data.seats,
-              seatsUsed: 0,
-              status: "ACTIVE",
-              expiresAt: data.expiresAt,
-            },
-          });
+      }
+  
+      // 2) License : seats/expiresAt (ignorer null, n'envoyer que des valeurs valides)
+      const wantsLicenseChange =
+        typeof data.seats !== "undefined" || typeof data.expiresAt !== "undefined";
+  
+      if (wantsLicenseChange) {
+        const existing = await prisma.license.findUnique({ where: { companyId } });
+  
+        const seatsProvided = typeof data.seats === "number";
+        const expiresProvided = data.expiresAt instanceof Date;
+  
+        if (existing) {
+          const licenseUpdate: Record<string, any> = {};
+          if (seatsProvided) licenseUpdate.seats = data.seats!;
+          if (expiresProvided) licenseUpdate.expiresAt = data.expiresAt!;
+  
+          // Ne rien envoyer si on n'a finalement pas de valeur valide
+          if (Object.keys(licenseUpdate).length > 0) {
+            await prisma.license.update({
+              where: { companyId },
+              data: licenseUpdate,
+            });
+          }
         } else {
-          return {
-            ok: false,
-            error:
-              "No existing license. Provide both seats and expiresAt to create a license.",
-          };
+          // Création stricte: on exige les deux champs non-nullables
+          if (seatsProvided && expiresProvided) {
+            await prisma.license.create({
+              data: {
+                companyId,
+                seats: data.seats!,         // number
+                seatsUsed: 0,
+                status: "ACTIVE",
+                expiresAt: data.expiresAt!,  // Date
+              },
+            });
+          } else {
+            return {
+              ok: false as const,
+              error:
+                "No existing license. Provide both seats and expiresAt to create a license.",
+            };
+          }
         }
       }
+  
+      revalidatePath("/admin/companies");
+      return { ok: true as const };
+    } catch (e: any) {
+      console.error(e);
+      return { ok: false as const, error: e?.message ?? "Failed to update company" };
+    }
+  }
+
+export async function updateCompanyLicenseStatus(input: {
+  companyId: string;
+  status: $Enums.LicenseStatus; // "ACTIVE" | "SUSPENDED" | "EXPIRED"
+}) {
+  const { companyId, status } = input;
+
+  try {
+    const existing = await prisma.license.findUnique({
+      where: { companyId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      // Pas de licence → on ne crée pas automatiquement
+      return { ok: false as const, error: "NO_LICENSE" as const };
     }
 
+    await prisma.license.update({
+      where: { companyId },
+      data: { status },
+    });
+
     revalidatePath("/admin/companies");
-    return { ok: true };
-  } catch (e: any) {
-    console.error(e);
-    return { ok: false, error: e?.message ?? "Failed to update company" };
+    return { ok: true as const };
+  } catch (e) {
+    console.error("updateCompanyLicenseStatus error:", e);
+    return { ok: false as const, error: "SERVER_ERROR" as const };
   }
 }

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { deleteCompany } from "@/app/admin/companies/actionsDelete";
 import { DeleteCompanyDialog } from "./delete-company-dialog";
 import { EditCompanySheet } from "@/components/admin/companies/edit-company-sheet";
+import { LicenseStatusCell } from "./license-status-cell";
 
 function RowActions({ company }: { company: CompanyRow }) {
   const router = useRouter();
@@ -98,11 +99,12 @@ export const companyColumns: ColumnDef<CompanyRow>[] = [
   {
     id: "status",
     header: "Status",
-    cell: ({ row }) => {
-      const st = row.original.licenseStatus;
-      if (!st) return <span className="text-muted-foreground">No license</span>;
-      return <Badge variant="outline">{st}</Badge>;
-    },
+    cell: ({ row }) => (
+      <LicenseStatusCell
+        companyId={row.original.id}
+        initial={row.original.licenseStatus}
+      />
+    ),
   },
   {
     accessorKey: "createdAtLabel",

@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { IconPencil } from "@tabler/icons-react";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { updateCompanyLicenseStatus } from "@/app/admin/companies/actionsUpdate";
 
 import {
   CompanyEditUISchema,
@@ -57,6 +59,8 @@ export function EditCompanySheet({ companyId, trigger }: Props) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = useTransition();
+  const [licenseStatus, setLicenseStatus] =
+  React.useState<"ACTIVE" | "SUSPENDED" | "EXPIRED" | null>(null);
 
   const form = useForm<CompanyEditFormInput>({
     defaultValues: {
@@ -100,6 +104,8 @@ export function EditCompanySheet({ companyId, trigger }: Props) {
         seats: c.license ? String(c.license.seats) : "",
         expiresAt: toDateInput(c.license?.expiresAt ?? null),
       });
+
+      setLicenseStatus(c.license?.status ?? null);
       toast.dismiss(tId);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,6 +283,10 @@ export function EditCompanySheet({ companyId, trigger }: Props) {
 
               <h3 className="text-lg font-semibold">License</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col md:col-span-2 gap-2">
+                    <FormLabel>License status</FormLabel>
+                    <LicenseStatusEditor companyId={companyId} initial={licenseStatus} />
+                </div>
                 <FormField
                   control={form.control}
                   name="seats"
@@ -327,3 +337,49 @@ export function EditCompanySheet({ companyId, trigger }: Props) {
     </Sheet>
   );
 }
+
+function LicenseStatusEditor({
+    companyId,
+    initial,
+  }: {
+    companyId: string;
+    initial: "ACTIVE" | "SUSPENDED" | "EXPIRED" | null;
+  }) {
+    const router = useRouter();
+    const [pending, startTransition] = useTransition();
+  
+    if (!initial) {
+      return <span className="text-muted-foreground">No license</span>;
+    }
+  
+    return (
+      <Select
+        defaultValue={initial}
+        onValueChange={(next) => {
+          startTransition(async () => {
+            const t = toast.loading("Updating license status…");
+            const res = await updateCompanyLicenseStatus({
+              companyId,
+              status: next as "ACTIVE" | "SUSPENDED" | "EXPIRED",
+            });
+            if (res.ok) {
+              toast.success("Status updated.", { id: t });
+              router.refresh();
+            } else {
+              toast.error("Update failed.", { id: t });
+            }
+          });
+        }}
+        disabled={pending}
+      >
+        <SelectTrigger className="h-8 w-[180px]">
+          <SelectValue placeholder="Select status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+          <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+          <SelectItem value="EXPIRED">EXPIRED</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  }
